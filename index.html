@@ -12,12 +12,12 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-famil
 #app{display:flex;flex-direction:column;height:100dvh;height:100%;padding-top:env(safe-area-inset-top,0)}
 #stage{flex:1;min-height:0;position:relative}
 canvas{display:block;width:100%;height:100%}
-#bar{padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));background:var(--panel);border-top:1px solid #3a3190}
-#inp{width:100%;font:700 19px ui-monospace,Menlo,Consolas,monospace;color:var(--text);background:#0c0a22;border:2px solid #3a3190;border-radius:12px;padding:11px 14px;outline:none;letter-spacing:.04em}
+#bar{display:flex;gap:8px;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));background:var(--panel);border-top:1px solid #3a3190}
+#inp{flex:1;min-width:0;font:700 19px ui-monospace,Menlo,Consolas,monospace;color:var(--text);background:#0c0a22;border:2px solid #3a3190;border-radius:12px;padding:11px 14px;outline:none;letter-spacing:.04em}
 #inp:focus{border-color:var(--rune)}
 #inp.err{border-color:var(--bad);animation:sh .25s}
 @keyframes sh{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
-#ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;background:rgba(14,11,36,.9)}
+#ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;overflow-y:auto;gap:10px;padding:16px 20px;text-align:center;background:rgba(14,11,36,.9)}
 #ov.hide{display:none}
 #ov h1{margin:0;font-size:34px;line-height:1.1;font-weight:800;color:var(--ember)}
 #ov p{margin:0;max-width:300px;line-height:1.45;color:#cfc8f5}
@@ -29,7 +29,16 @@ canvas{display:block;width:100%;height:100%}
 .sw{width:46px;height:26px;border-radius:13px;background:#3a3190;position:relative;transition:background .15s}
 .sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .15s}
 .sw.on{background:var(--ember)}.sw.on::after{transform:translateX(20px)}
-.row b{color:var(--ember)}.mrow{display:flex;gap:10px}
+.row b{color:var(--ember)}.mrow{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+#ov .mrow button{padding:10px 14px;font-size:14px}
+#pz{flex:none;width:52px;font-size:20px;border:2px solid #3a3190;border-radius:12px;background:#0c0a22;color:var(--text);cursor:pointer}#pz.hide{display:none}
+#pv{width:150px;height:170px}
+.xpb{width:230px;height:12px;border-radius:6px;background:#0c0a22;overflow:hidden}.xpb i{display:block;height:100%;background:linear-gradient(90deg,#8f7bff,#ffb347)}
+.lvl{font-weight:800;font-size:18px}.sm{font-size:13px;color:#cfc8f5}.rw{color:#ffd24a;font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:330px}.chips span{font-size:12px;background:var(--panel);border-radius:10px;padding:5px 9px;color:#cfc8f5}
+.tabs{display:flex;gap:6px}#ov .tab{padding:8px 12px;font-size:14px;background:#1d1845;color:#9d96c9;border:2px solid #3a3190}#ov .tab.on{border-color:var(--rune);color:#fff}
+.list{display:flex;flex-direction:column;gap:6px;width:290px;max-height:32vh;overflow-y:auto}
+.it{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 12px;border-radius:12px;background:var(--panel);font-size:14px;font-weight:600;text-align:left;cursor:pointer}.it.eq{outline:2px solid var(--ember)}.it small{color:var(--ember);font-weight:700;white-space:nowrap}.it.no{opacity:.5}
 </style>
 </head>
 <body>
@@ -38,7 +47,7 @@ canvas{display:block;width:100%;height:100%}
     <canvas id="cv"></canvas>
     <div id="ov"><h1>Словомаг</h1><p>С неба падают слова. Печатай слово целиком — маг выстрелит и ударит босса. Чем длиннее слово, тем сильнее удар.</p><button id="go">Играть</button></div>
   </div>
-  <div id="bar"><input id="inp" placeholder="печатай слово…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="done"></div>
+  <div id="bar"><input id="inp" placeholder="печатай слово…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="done"><button id="pz" class="hide" aria-label="pause">⏸</button></div>
 </div>
 <script>
 const tg=window.Telegram&&Telegram.WebApp;
@@ -67,10 +76,11 @@ const SFX={
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d'),inp=$('inp'),ov=$('ov');
 
-const S_W="кот дом лес сон мир суп нос чай мяч шар зуб лук рот бук удар огонь волк меч щит дым гром яд плащ".split(' ');
-const M_W="магия дракон замок стрела молния корона ведьма клинок туман пламя камень ветер тень башня шипы руна посох зелье".split(' ');
-const L_W="заклинание волшебник чудовище подземелье сокровище колдовство кристалл лабиринт хранитель сражение проклятие легенда победитель драконоборец".split(' ');
-const EN_W=["cat sun map key fox bat owl ice ash axe bow orb elf imp gem fire wolf mist bone dusk".split(' '),"magic dragon castle arrow thunder flame stone shadow tower spell staff potion forest cursed".split(' '),"sorcerer monster dungeon treasure darkness crystal labyrinth guardian vengeance adventure prophecy lightning dragonslayer".split(' ')];
+const U=a=>[...new Set(a)];
+const S_W=U("кот дом лес сон мир суп нос чай мяч шар зуб лук рот бук меч щит дым яд сыр луна волк лиса руда мост дуб ель сад бой жар лед гном змей жук сова мышь клык лапа гром удар свет тьма звон нож яма вода соль мед хлеб рог крик шаг сеть эльф орк маг дух гриб жаба тень кость цепь шип лев рысь краб лань".split(' '));
+const M_W=U("магия дракон замок стрела молния корона ведьма клинок туман пламя камень ветер башня шипы руна посох зелье огонь буря кинжал копье кольцо рыцарь воин лучник костер пещера болото призрак скелет тролль гоблин демон ангел пират шторм волна океан остров маяк корабль якорь бочка золото монета рубин алмаз сапфир топаз янтарь опал гранат зеркало свеча лампа книга свиток перо ключ печать цепи броня шлем латы щиток колчан тетива капкан чары заклятие туча искра ледник пустыня река озеро гора долина тропа лагерь трон скипетр кубок амулет".split(' '));
+const L_W=U("заклинание волшебник чудовище подземелье сокровище колдовство кристалл лабиринт хранитель сражение проклятие легенда победитель драконоборец приключение путешествие королевство императрица чародейка оборотень великан единорог привидение катастрофа землетрясение бесстрашный непобедимый могущество повелитель звездопад метеорит затмение созвездие крепость цитадель твердыня наследие пророчество предсказание воскрешение перерождение заточение освобождение возмездие справедливость отважный бесконечность вселенная пространство превращение исцеление невидимость разрушитель защитник охотник следопыт странник отшельник алхимик чернокнижник некромант библиотека лаборатория обсерватория воительница кузнец герцог принцесса наёмник гладиатор".replace('ё','е').split(' '));
+const EN_W=[U("cat sun map key fox bat owl ice ash axe bow orb elf imp gem fire wolf mist bone dusk oak elm sky sea moon star rune gold iron lava fang claw wing tail horn scar mud fog web ant bee ram yak orc coin ring gate door tomb crow rat pig hawk lion bear deer duck frog toad newt eel".split(' ')),U("magic dragon castle arrow thunder flame stone shadow tower spell staff potion forest cursed witch curse blade sword shield armor helmet dagger bridge river swamp cavern desert island harbor ocean storm cloud flash spark ember frost snow blaze crown throne scroll tome relic amulet ghost angel demon beast raven falcon panther serpent goblin knight wizard archer ranger bandit pirate camp trail ruins valley glacier meadow canyon".split(' ')),U("sorcerer monster dungeon treasure darkness crystal labyrinth guardian vengeance adventure prophecy lightning dragonslayer kingdom emperor champion warrior blacksmith alchemist necromancer enchantress mountain wilderness fortress citadel catacomb graveyard nightmare earthquake hurricane avalanche invisible indestructible legendary mysterious ancient forgotten eternal destiny resurrection transformation constellation observatory laboratory invincible bloodthirsty unstoppable gargoyle werewolf vampire unicorn phoenix leviathan behemoth skeleton gladiator mercenary wanderer hermit conjurer treasury battlefield thunderstorm".split(' '))];
 const WORDS={ru:[S_W,M_W,L_W],en:EN_W};
 const BIO_EN=[['Goblin','Dark Forest'],['Skeleton','Old Graveyard'],['Troll','Mountain Pass'],['Lich','Frozen Peaks'],['Dragon','Fire Volcano'],['Demon','The Abyss']];
 const TX={ru:{ttl:'Словомаг',desc:'С неба падают слова. Печатай слово целиком — маг выстрелит и ударит босса. Чем длиннее слово, тем сильнее удар.',play:'Играть',again:'Ещё раз',set:'Настройки',back:'Назад',snd:'Звуки',vib:'Вибрация',lang:'Язык',best:'Лучший результат',lose:'Поражение',score:'Счёт',lvl:'Уровень',rec:'Новый рекорд!',lv:'ур.',ph:'печатай слово…',start:'Бой начинается!',loc:'Локация:',win:'Босс повержен!',next:'Впереди:'},
@@ -85,6 +95,50 @@ const BIO=[
  {n:'Демон',loc:'Бездна',sky:['#14072b','#5a1a6e'],gr:'#0a0414',col:'#ff6ad5'}];
 const hs=i=>Math.abs(Math.sin(i*91.7+3.1)*437.58%1);
 
+Object.assign(TX.ru,{wd:'Гардероб',pause:'Пауза',resume:'Продолжить',menu:'В меню',hat:'Шляпа',cloak:'Плащ',staff:'Посох',equip:'Надето',wear:'Надеть',up:'Новый уровень!',stage:'Дошёл до босса'});
+Object.assign(TX.en,{wd:'Wardrobe',pause:'Paused',resume:'Resume',menu:'Menu',hat:'Hat',cloak:'Cloak',staff:'Staff',equip:'Equipped',wear:'Equip',up:'Level up!',stage:'Reached boss'});
+const SK={
+h:[{id:'h0',n:{ru:'Колпак мага',en:'Mage hat'},p:0,k:'cone',a:'#3a2a9e'},{id:'h1',n:{ru:'Алый колпак',en:'Scarlet hat'},p:90,k:'cone',a:'#c0392b'},{id:'h2',n:{ru:'Шляпа ведьмы',en:'Witch hat'},p:150,k:'witch',a:'#1a1033',b:'#b06aff'},{id:'h3',n:{ru:'Звёздный колпак',en:'Star hat'},p:220,k:'star',a:'#1c2a6b'},{id:'h4',n:{ru:'Корона',en:'Crown'},p:400,k:'crown',a:'#ffd24a'}],
+c:[{id:'c0',n:{ru:'Фиолетовый плащ',en:'Violet cloak'},p:0,k:0,a:'#5a3fd0',b:'#ffd24a'},{id:'c1',n:{ru:'Алый плащ',en:'Scarlet cloak'},p:80,k:1,a:'#c0392b',b:'#ffd24a'},{id:'c2',n:{ru:'Изумрудный плащ',en:'Emerald cloak'},p:120,k:1,a:'#1f9d6b',b:'#d8ffe9'},{id:'c3',n:{ru:'Звёздный плащ',en:'Starry cloak'},p:220,k:2,a:'#1c2a6b',b:'#ffffff'},{id:'c4',n:{ru:'Золотой плащ',en:'Golden cloak'},p:400,k:1,a:'#d9a520',b:'#7a4a00'}],
+s:[{id:'s0',n:{ru:'Деревянный посох',en:'Wooden staff'},p:0,k:'orb',pole:'#8a5a2b',orb:'#ffb347',glow:'#ffb347'},{id:'s1',n:{ru:'Кристальный посох',en:'Crystal staff'},p:100,k:'dia',pole:'#9aa4c4',orb:'#5cf0ff',glow:'#5cf0ff'},{id:'s2',n:{ru:'Огненный посох',en:'Fire staff'},p:200,k:'orb',pole:'#3a1a12',orb:'#ff5a2a',glow:'#ff3a1a'},{id:'s3',n:{ru:'Ледяной посох',en:'Frost staff'},p:260,k:'dia',pole:'#cfe8ff',orb:'#d8f6ff',glow:'#7fd0ff'},{id:'s4',n:{ru:'Посох природы',en:'Nature staff'},p:350,k:'orb',pole:'#5a3a1a',orb:'#7dff6a',glow:'#3cdc3c'}]};
+const ICON={h:'🎩',c:'🧥',s:'🔮'};
+let PR={xp:0,lv:1,gold:0,own:['h0','c0','s0'],eq:{h:'h0',c:'c0',s:'s0'}};
+try{const q=JSON.parse(localStorage.getItem('slovomag_prof')||'null');if(q&&q.eq&&q.own)PR=Object.assign(PR,q)}catch(e){}
+const saveP=()=>{try{localStorage.setItem('slovomag_prof',JSON.stringify(PR))}catch(e){}};
+const item=k=>SK[k].find(i=>i.id===PR.eq[k])||SK[k][0];
+const need=l=>100+(l-1)*50;
+function payout(){const pts=Math.max(0,G.score-G.paid);G.paid=G.score;const xp=Math.ceil(pts/15);let gold=Math.floor(pts/30),up=0;PR.xp+=xp;while(PR.xp>=need(PR.lv)){PR.xp-=need(PR.lv);PR.lv++;up++;gold+=20}PR.gold+=gold;saveP();return{xp,gold,up}}
+const rwText=r=>`+${r.xp} XP   +${r.gold} 🪙${r.up?'   '+TX[lang].up:''}`;
+const pz=$('pz');pz.onclick=()=>{SFX.click();pause()};
+document.addEventListener('visibilitychange',()=>{if(document.hidden)pause()});
+let PVc=null;
+
+function figure(c,cx,by,sc,hl,t){
+  const Hh=item('h'),Cc=item('c'),Ss=item('s');
+  c.save();c.translate(cx,by);c.scale(sc,sc);
+  c.fillStyle=Cc.a;c.beginPath();c.moveTo(-22,0);c.lineTo(22,0);c.lineTo(10,-34);c.lineTo(-10,-34);c.fill();
+  c.fillStyle='rgba(0,0,0,.18)';c.fillRect(-2,-30,4,30);
+  if(Cc.k===1){c.fillStyle=Cc.b;c.fillRect(-22,-4,44,4)}
+  if(Cc.k===2){c.fillStyle=Cc.b;[[-9,-8],[7,-14],[-3,-22],[11,-5],[-14,-4],[2,-8]].forEach(q=>{c.beginPath();c.arc(q[0],q[1],1.7,0,6.283);c.fill()})}
+  c.fillStyle=Cc.b;c.beginPath();c.arc(0,-32,2.6,0,6.283);c.fill();
+  c.fillStyle='#f0c9a0';c.beginPath();c.arc(0,-42,8,0,6.283);c.fill();
+  c.fillStyle=Hh.a;
+  if(Hh.k==='crown'){c.fillRect(-9,-54,18,8);for(const x of[-9,0,9]){c.beginPath();c.moveTo(x-4,-54);c.lineTo(x,-63);c.lineTo(x+4,-54);c.fill()}c.fillStyle='#e8453c';c.beginPath();c.arc(0,-50,2,0,6.283);c.fill()}
+  else if(Hh.k==='witch'){c.beginPath();c.ellipse(0,-47,22,4,0,0,6.283);c.fill();c.beginPath();c.moveTo(-10,-47);c.lineTo(3,-77);c.lineTo(10,-47);c.fill();c.fillStyle=Hh.b;c.fillRect(-10,-53,20,3)}
+  else{c.beginPath();c.moveTo(-15,-46);c.lineTo(0,-76);c.lineTo(15,-46);c.fill();c.fillRect(-17,-48,34,4);c.fillStyle='#ffd24a';c.fillRect(-14,-52,28,2.5);if(Hh.k==='star'){c.beginPath();c.arc(0,-77,3.5,0,6.283);c.fill()}}
+  c.strokeStyle=Ss.pole;c.lineWidth=3;c.beginPath();c.moveTo(22,2);c.lineTo(22,-60);c.stroke();
+  c.fillStyle=hl?'#ffd24a':Ss.orb;c.shadowColor=Ss.glow;c.shadowBlur=14;c.beginPath();
+  if(Ss.k==='dia'){c.moveTo(22,-73);c.lineTo(28,-64);c.lineTo(22,-55);c.lineTo(16,-64)}else c.arc(22,-64,6,0,6.283);
+  c.fill();c.shadowBlur=0;c.restore();
+}
+function drawPV(){
+  const e=PVc;if(!e||!e.isConnected)return;const w=e.clientWidth,h=e.clientHeight;if(!w)return;
+  const d=Math.min(devicePixelRatio||1,2);if(e.width!==Math.round(w*d)){e.width=Math.round(w*d);e.height=Math.round(h*d)}
+  const c=e.getContext('2d'),sc=Math.min(w/62,h/92);c.setTransform(d,0,0,d,0,0);c.clearRect(0,0,w,h);
+  const g=c.createRadialGradient(w/2,h*.6,5,w/2,h*.6,w*.6);g.addColorStop(0,'rgba(143,123,255,.35)');g.addColorStop(1,'rgba(143,123,255,0)');c.fillStyle=g;c.fillRect(0,0,w,h);
+  figure(c,w/2-4*sc,h-8+Math.sin(CLK*2)*2,sc,false,CLK);
+}
+
 let W=300,H=500,dpr=1,S=1,st='menu',G=null,last=0;
 let best=0;try{best=+localStorage.getItem('slovomag_best')||0}catch(e){}
 const stars=Array.from({length:45},()=>({u:Math.random(),v:Math.random(),r:Math.random()*1.4+.3,p:Math.random()*6}));
@@ -94,7 +148,7 @@ new ResizeObserver(rs).observe(cv);rs();
 
 const L=()=>({bossR:34*S,bossY:50+34*S+4,limit:H-8-72*S,orbX:W/2+22*S,orbY:H-8-64*S});
 
-function newGame(){G={lvl:1,score:0,lives:5,combo:0,words:[],shots:[],parts:[],spawn:.4,t:0,flash:0,shake:0,banner:1.4,btxt:TX[lang].start,sub:TX[lang].loc+' '+bl(0),target:null,typed:''};initBoss()}
+function newGame(){G={paid:0,lvl:1,score:0,lives:5,combo:0,words:[],shots:[],parts:[],spawn:.4,t:0,flash:0,shake:0,banner:1.4,btxt:TX[lang].start,sub:TX[lang].loc+' '+bl(0),target:null,typed:''};initBoss()}
 function initBoss(){G.bossMax=G.bossHp=60+G.lvl*50}
 
 function pick(){
@@ -132,7 +186,7 @@ inp.addEventListener('input',()=>{
   G.target=c.reduce((a,b)=>b.y>a.y?b:a);
 });
 inp.addEventListener('keydown',e=>{if(e.key==='Enter'){inp.value='';G&&(G.typed='',G.target=null)}});
-window.addEventListener('keydown',()=>{if(st==='play'&&document.activeElement!==inp)inp.focus()});
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&st==='play'){pause();return}if(st==='play'&&document.activeElement!==inp)inp.focus()});
 cv.addEventListener('pointerdown',()=>{if(st==='play')inp.focus()});
 
 function hitBoss(s){
@@ -143,7 +197,7 @@ function hitBoss(s){
     G.words.forEach(w=>{const p=wx(w);boom(p.x,w.y,'#8f7bff',8)});G.words=[];G.shots=[];
     boom(b.x,b.y,'#ffd24a',40);
     G.score+=500*G.lvl;G.lvl++;G.lives=Math.min(5,G.lives+1);initBoss();
-    G.btxt=TX[lang].win;G.sub=TX[lang].next+' '+bl((G.lvl-1)%6);G.banner=2.4;
+    const rw=payout();G.rwt=rwText(rw);G.btxt=TX[lang].win;G.sub=TX[lang].next+' '+bl((G.lvl-1)%6);G.banner=2.4;
     SFX.bossDie();bossBuzz();setTimeout(SFX.roar,1700);
   }
 }
@@ -174,7 +228,7 @@ function update(dt){
       if(s.stage===1){SFX.word(s.len);boom(tx,ty,'#ffd24a',12+s.len*2);G.words=G.words.filter(w=>w!==s.w);s.stage=2}
       else{s.done=true;hitBoss(s)}
     }else{s.x+=dx/d*sp;s.y+=dy/d*sp}
-    G.parts.push({x:s.x,y:s.y,vx:0,vy:0,life:.25,max:.25,col:s.stage===1?'#8f7bff':'#ffb347',r:2+s.len*.4});
+    G.parts.push({x:s.x,y:s.y,vx:0,vy:0,life:.25,max:.25,col:s.stage===1?'#8f7bff':item('s').orb,r:2+s.len*.4});
   }
   G.shots=G.shots.filter(s=>!s.done);
   for(const p of G.parts){p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt}
@@ -185,28 +239,62 @@ function update(dt){
 function gameOver(){
   st='over';inp.blur();SFX.over();nfy('error');
   const rec=G.score>best;if(rec){best=G.score;try{localStorage.setItem('slovomag_best',best)}catch(e){}}
-  showMenu(true,rec);
+  showOver(rec,payout());
 }
 function setLang(){lang=lang==='ru'?'en':'ru';saveSet();inp.placeholder=TX[lang].ph}
-function showMenu(over,rec){
+const xpLine=()=>`<div class="lvl">${TX[lang].lvl} ${PR.lv}</div><div class="xpb"><i style="width:${Math.min(100,Math.floor(PR.xp/need(PR.lv)*100))}%"></i></div><div class="sm">${PR.xp} / ${need(PR.lv)} XP  ·  🪙 ${PR.gold}</div>`;
+const chips=()=>`<div class="chips">${['h','c','s'].map(k=>`<span>${ICON[k]} ${item(k).n[lang]}</span>`).join('')}</div>`;
+function showMenu(rw){
   const t=TX[lang];
-  ov.innerHTML=(over?`<h1>${t.lose}</h1><p>${t.score}: <b>${G.score}</b><br>${t.lvl}: ${G.lvl}${rec?'<br>'+t.rec:''}</p>`:`<h1>${t.ttl}</h1><p>${t.desc}</p>`)
-   +`<div class="best">🏆 ${t.best}: <b>${best}</b></div><button id="go">${over?t.again:t.play}</button><div class="mrow"><button id="st" class="ghost">⚙ ${t.set}</button><button id="lg" class="ghost">🌐 ${lang.toUpperCase()}</button></div>`;
-  ov.classList.remove('hide');
+  ov.innerHTML=`<h1>${t.ttl}</h1><canvas id="pv"></canvas>${xpLine()}${chips()}${rw?`<div class="rw">${rwText(rw)}</div>`:''}<div class="best">🏆 ${t.best}: <b>${best}</b></div><button id="go">${t.play}</button><div class="mrow"><button id="wd" class="ghost">🎩 ${t.wd}</button><button id="st" class="ghost">⚙ ${t.set}</button><button id="lg" class="ghost">🌐 ${lang.toUpperCase()}</button></div>`;
+  PVc=$('pv');ov.classList.remove('hide');pz.classList.add('hide');
   $('go').onclick=()=>{SFX.click();start()};
-  $('st').onclick=()=>{SFX.click();showSet(over,rec)};
-  $('lg').onclick=()=>{setLang();SFX.click();showMenu(over,rec)};
+  $('wd').onclick=()=>{SFX.click();showShop('h',()=>showMenu())};
+  $('st').onclick=()=>{SFX.click();showSet(()=>showMenu())};
+  $('lg').onclick=()=>{setLang();SFX.click();showMenu(rw)};
 }
-function showSet(over,rec){
+function showOver(rec,rw){
+  const t=TX[lang];
+  ov.innerHTML=`<h1>${t.lose}</h1><p>${t.score}: <b>${G.score}</b><br>${t.stage} ${G.lvl}${rec?'<br>'+t.rec:''}</p><div class="rw">${rwText(rw)}</div>${xpLine()}<div class="best">🏆 ${t.best}: <b>${best}</b></div><button id="go">${t.menu}</button><button id="ag" class="ghost">${t.again}</button>`;
+  PVc=null;ov.classList.remove('hide');pz.classList.add('hide');
+  $('go').onclick=()=>{SFX.click();G=null;st='menu';showMenu()};
+  $('ag').onclick=()=>{SFX.click();start()};
+}
+function showSet(back){
   const t=TX[lang];
   ov.innerHTML=`<h1>${t.set}</h1><div class="row" id="rs"><span>${t.snd}</span><i class="sw ${sfxOn?'on':''}"></i></div><div class="row" id="rv"><span>${t.vib}</span><i class="sw ${vibOn?'on':''}"></i></div><div class="row" id="rl"><span>${t.lang}</span><b>${lang==='ru'?'Русский':'English'}</b></div><button id="bk" class="ghost">${t.back}</button>`;
-  $('rs').onclick=()=>{sfxOn=!sfxOn;saveSet();SFX.click();showSet(over,rec)};
-  $('rv').onclick=()=>{vibOn=!vibOn;saveSet();hap('medium');showSet(over,rec)};
-  $('rl').onclick=()=>{setLang();SFX.click();showSet(over,rec)};
-  $('bk').onclick=()=>{SFX.click();showMenu(over,rec)};
+  PVc=null;
+  $('rs').onclick=()=>{sfxOn=!sfxOn;saveSet();SFX.click();showSet(back)};
+  $('rv').onclick=()=>{vibOn=!vibOn;saveSet();hap('medium');showSet(back)};
+  $('rl').onclick=()=>{setLang();SFX.click();showSet(back)};
+  $('bk').onclick=()=>{SFX.click();back()};
 }
-function start(){ac();newGame();st='play';ov.classList.add('hide');inp.value='';pl=0;inp.placeholder=TX[lang].ph;inp.focus()}
-inp.placeholder=TX[lang].ph;showMenu(false);
+function showShop(part,back){
+  const t=TX[lang],nm={h:t.hat,c:t.cloak,s:t.staff};
+  ov.innerHTML=`<h1>${t.wd}</h1><canvas id="pv" style="width:110px;height:130px"></canvas><div class="sm">🪙 ${PR.gold}</div><div class="tabs">${['h','c','s'].map(k=>`<button class="tab ${k===part?'on':''}" data-k="${k}">${ICON[k]} ${nm[k]}</button>`).join('')}</div><div class="list">${SK[part].map(i=>{const own=PR.own.includes(i.id),eq=PR.eq[part]===i.id;return `<div class="it ${eq?'eq':''} ${!own&&PR.gold<i.p?'no':''}" data-id="${i.id}"><span>${i.n[lang]}</span><small>${eq?t.equip:own?t.wear:'🪙 '+i.p}</small></div>`}).join('')}</div><button id="bk" class="ghost">${t.back}</button>`;
+  PVc=$('pv');
+  ov.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{SFX.click();showShop(b.dataset.k,back)});
+  ov.querySelectorAll('.it').forEach(d=>d.onclick=()=>{
+    const i=SK[part].find(x=>x.id===d.dataset.id);
+    if(!PR.own.includes(i.id)){if(PR.gold<i.p){hap('rigid');SFX.err();return}PR.gold-=i.p;PR.own.push(i.id)}
+    PR.eq[part]=i.id;saveP();SFX.click();hap('light');showShop(part,back)});
+  $('bk').onclick=()=>{SFX.click();back()};
+}
+function pause(){
+  if(st!=='play')return;
+  st='pause';inp.blur();inp.value='';G.typed='';G.target=null;pl=0;showPauseUI();
+}
+function showPauseUI(){
+  const t=TX[lang];
+  ov.innerHTML=`<h1>${t.pause}</h1><p>${t.score}: <b>${G.score}</b></p><button id="go">${t.resume}</button><div class="mrow"><button id="st" class="ghost">⚙ ${t.set}</button><button id="mn" class="ghost">${t.menu}</button></div>`;
+  PVc=null;ov.classList.remove('hide');pz.classList.add('hide');
+  $('go').onclick=resume;
+  $('st').onclick=()=>{SFX.click();showSet(showPauseUI)};
+  $('mn').onclick=()=>{SFX.click();const rw=G.score>G.paid?payout():null;G=null;st='menu';showMenu(rw)};
+}
+function resume(){SFX.click();ov.classList.add('hide');pz.classList.remove('hide');st='play';inp.focus()}
+function start(){ac();newGame();st='play';ov.classList.add('hide');pz.classList.remove('hide');inp.value='';pl=0;inp.placeholder=TX[lang].ph;inp.focus()}
+inp.placeholder=TX[lang].ph;showMenu();
 
 function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
 
@@ -274,17 +362,7 @@ function drawBoss(){
     R(-.5,.3,1,.3,'#1a0d2e');for(let i=-2;i<=2;i++)P([[i*.18-.07,.3],[i*.18+.07,.3],[i*.18,.45]],'#fff')}
   ctx.restore();
 }
-function drawMage(){
-  const o=L();ctx.save();ctx.translate(W/2,H-8);ctx.scale(S,S);
-  ctx.fillStyle='#5a3fd0';ctx.beginPath();ctx.moveTo(-20,0);ctx.lineTo(20,0);ctx.lineTo(9,-34);ctx.lineTo(-9,-34);ctx.fill();
-  ctx.fillStyle='#f0c9a0';ctx.beginPath();ctx.arc(0,-42,8,0,6.283);ctx.fill();
-  ctx.fillStyle='#3a2a9e';ctx.beginPath();ctx.moveTo(-15,-46);ctx.lineTo(0,-76);ctx.lineTo(15,-46);ctx.fill();
-  ctx.fillRect(-17,-48,34,4);
-  ctx.strokeStyle='#8a5a2b';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(22,0);ctx.lineTo(22,-60);ctx.stroke();
-  ctx.restore();
-  ctx.fillStyle=G&&G.target?'#ffd24a':'#ffb347';ctx.shadowColor='#ffb347';ctx.shadowBlur=14;
-  ctx.beginPath();ctx.arc(o.orbX,o.orbY,6*S,0,6.283);ctx.fill();ctx.shadowBlur=0;
-}
+function drawMage(){figure(ctx,W/2,H-8,S,G&&G.target,G?G.t:0)}
 function drawWord(w){
   const p=wx(w),o=L(),h=fs()+14,x=p.x-p.tw/2,y=w.y-h/2;
   const danger=w.y>o.limit-70*S,isT=G.target===w;
@@ -304,7 +382,7 @@ function draw(){
   ctx.strokeStyle='rgba(255,90,110,.25)';ctx.setLineDash([6,6]);ctx.beginPath();ctx.moveTo(0,o.limit);ctx.lineTo(W,o.limit);ctx.stroke();ctx.setLineDash([]);
   drawBoss();
   G.words.forEach(drawWord);
-  for(const s of G.shots){ctx.fillStyle=s.stage===1?'#b3a6ff':'#ffb347';ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=12;ctx.beginPath();ctx.arc(s.x,s.y,(4+s.len*.7)*S,0,6.283);ctx.fill();ctx.shadowBlur=0}
+  for(const s of G.shots){ctx.fillStyle=s.stage===1?'#b3a6ff':item('s').orb;ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=12;ctx.beginPath();ctx.arc(s.x,s.y,(4+s.len*.7)*S,0,6.283);ctx.fill();ctx.shadowBlur=0}
   for(const p of G.parts){
     ctx.globalAlpha=Math.max(0,p.life/p.max);
     if(p.txt){ctx.fillStyle=p.col;ctx.font='800 22px system-ui,sans-serif';ctx.textAlign='center';ctx.fillText(p.txt,p.x,p.y)}
@@ -322,13 +400,13 @@ function draw(){
   ctx.textAlign='right';ctx.fillText(`${G.score}`+(G.combo>=3?`  x${Math.max(1,Math.floor(G.combo/3))}`:''),W-12,30);
   ctx.textAlign='left';ctx.fillStyle='#ff5a6e';ctx.font='700 14px system-ui,sans-serif';
   ctx.fillText('♥'.repeat(Math.max(0,G.lives)),12,H-24);
-  if(G.banner>0){ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#ffb347';ctx.font='800 28px system-ui,sans-serif';ctx.fillText(G.btxt,W/2,H*.4);ctx.font='600 15px system-ui,sans-serif';ctx.fillStyle='#cfc8f5';ctx.fillText(G.sub||'',W/2,H*.4+30)}
+  if(G.banner>0){ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#ffb347';ctx.font='800 28px system-ui,sans-serif';ctx.fillText(G.btxt,W/2,H*.4);ctx.font='600 15px system-ui,sans-serif';ctx.fillStyle='#cfc8f5';ctx.fillText(G.sub||'',W/2,H*.4+30);if(G.rwt){ctx.fillStyle='#ffd24a';ctx.fillText(G.rwt,W/2,H*.4+54)}}
   ctx.textBaseline='alphabetic';
 }
 function loop(ts){
   const dt=Math.min(.05,(ts-last)/1000||0);last=ts;CLK+=dt;
   if(st==='play'&&G)update(dt);
-  draw();requestAnimationFrame(loop);
+  draw();drawPV();requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
 </script>
