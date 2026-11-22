@@ -480,7 +480,7 @@ const xpLine=()=>`<div class="lvl">${TX[lang].lvl} ${PR.lv}</div><div class="xpb
 const chips=()=>`<div class="chips">${['h','c','s','t','k','p'].filter(k=>'hcs'.includes(k)||PR.eq[k][1]!=='0').map(k=>`<span>${ICON[k]} ${item(k).n[lang]}</span>`).join('')}</div>`;
 
 /* ===== Рейтинг и онлайн (нужен сервер, см. worker.js) ===== */
-const LB_API='';/* ← вставь сюда URL воркера, например https://slovomag-api.твойник.workers.dev */
+const LB_API='https://slovomag-api.ralphfajzullin.workers.dev';
 Object.assign(TX.ru,{top:'Рейтинг',byxp:'Опыт',bygold:'Золото',bylv:'Уровень',onl:'Онлайн',you:'Ты',empty:'Пока пусто',load:'Загрузка…',noconn:'Нет связи с сервером'});
 Object.assign(TX.en,{top:'Leaderboard',byxp:'XP',bygold:'Gold',bylv:'Level',onl:'Online',you:'You',empty:'Nobody yet',load:'Loading…',noconn:'No connection'});
 const lbEsc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
