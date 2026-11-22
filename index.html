@@ -473,19 +473,52 @@ function showQuests(back){
 function gameOver(){
   st='over';cancelSwipe();SFX.over();nfy('error');
   const rec=G.score>best;if(rec){best=G.score;try{localStorage.setItem('slovomag_best',best)}catch(e){}}
-  if(G.daily&&(!PR.db||PR.db.d!==dayKey()||G.score>PR.db.s))PR.db={d:dayKey(),s:G.score};showOver(rec,payout());
+  if(G.daily&&(!PR.db||PR.db.d!==dayKey()||G.score>PR.db.s))PR.db={d:dayKey(),s:G.score};showOver(rec,payout());lbPing();
 }
 function setLang(){lang=lang==='ru'?'en':'ru';saveSet();buildKb()}
 const xpLine=()=>`<div class="lvl">${TX[lang].lvl} ${PR.lv}</div><div class="xpb"><i style="width:${Math.min(100,Math.floor(PR.xp/need(PR.lv)*100))}%"></i></div><div class="sm">${PR.xp} / ${need(PR.lv)} XP  ·  🪙 ${PR.gold}</div>`;
 const chips=()=>`<div class="chips">${['h','c','s','t','k','p'].filter(k=>'hcs'.includes(k)||PR.eq[k][1]!=='0').map(k=>`<span>${ICON[k]} ${item(k).n[lang]}</span>`).join('')}</div>`;
+
+/* ===== Рейтинг и онлайн (нужен сервер, см. worker.js) ===== */
+const LB_API='';/* ← вставь сюда URL воркера, например https://slovomag-api.твойник.workers.dev */
+Object.assign(TX.ru,{top:'Рейтинг',byxp:'Опыт',bygold:'Золото',bylv:'Уровень',onl:'Онлайн',you:'Ты',empty:'Пока пусто',load:'Загрузка…',noconn:'Нет связи с сервером'});
+Object.assign(TX.en,{top:'Leaderboard',byxp:'XP',bygold:'Gold',bylv:'Level',onl:'Online',you:'You',empty:'Nobody yet',load:'Loading…',noconn:'No connection'});
+const lbEsc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const lbTotalXp=()=>{const n=PR.lv-1;return 100*n+25*n*(n-1)+PR.xp};
+let LB_ONL=null,LB_BY='xp';
+async function lbApi(path,extra){
+  if(!LB_API||!tg||!tg.initData)return null;
+  try{const r=await fetch(LB_API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({initData:tg.initData,lv:PR.lv,xp:lbTotalXp(),gold:PR.gold},extra||{}))});return r.ok?await r.json():null}catch(e){return null}
+}
+const lbOnlTxt=()=>LB_ONL==null?'':`🟢 ${TX[lang].onl}: <b>${LB_ONL}</b>`;
+function lbSetOnl(n){LB_ONL=n;const e=$('onl');if(e)e.innerHTML=lbOnlTxt()}
+async function lbPing(){const r=await lbApi('/ping');if(r&&r.online!=null)lbSetOnl(r.online)}
+setInterval(()=>{if(!document.hidden)lbPing()},30000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)lbPing()});
+lbPing();
+async function showTop(back,by){
+  by=by||LB_BY;LB_BY=by;const t=TX[lang];PVc=null;
+  const tabs=[['xp',t.byxp],['gold',t.bygold],['lv',t.bylv]];
+  ov.innerHTML=`<h1>🏆 ${t.top}</h1><div class="sm" id="onl">${lbOnlTxt()}</div><div class="tabs">${tabs.map(([k,n])=>`<button class="tab ${k===by?'on':''}" data-k="${k}">${n}</button>`).join('')}</div><div class="list" id="tl" style="max-height:46vh;width:310px"><div class="sm">${t.load}</div></div><div class="sm" id="me"></div><button id="bk" class="ghost">${t.back}</button>`;
+  ov.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{SFX.click();showTop(back,b.dataset.k)});
+  $('bk').onclick=()=>{SFX.click();back()};
+  const r=await lbApi('/top',{by});
+  if(LB_BY!==by||!$('tl'))return;
+  if(!r){$('tl').innerHTML=`<div class="sm">${t.noconn}</div>`;return}
+  lbSetOnl(r.online);
+  const md=['🥇','🥈','🥉'],val=p=>by==='xp'?`${p.xp} XP`:by==='gold'?`${p.gold} 🪙`:`${t.lv} ${p.lv}`,sub=p=>by==='lv'?`${p.xp} XP`:`${t.lvl} ${p.lv}`;
+  $('tl').innerHTML=r.list.length?r.list.map((p,i)=>`<div class="it${p.me?' eq':''}"><span>${md[i]||(i+1)+'.'} ${lbEsc(p.name)}<em>${sub(p)}</em></span><small>${val(p)}</small></div>`).join(''):`<div class="sm">${t.empty}</div>`;
+  $('me').innerHTML=r.rank?`${t.you}: <b>#${r.rank}</b>`:'';
+}
 function showMenu(rw){setKb(false);ensureDay();
   const t=TX[lang],cl=PR.dq.q.filter(q=>!q.c&&q.h>=QM[q.id].need).length,db=PR.db&&PR.db.d===dayKey()?PR.db.s:0,gift=PR.lg;
   if(gift){PR.lg=0;saveP()}
-  ov.innerHTML=`<h1>${t.ttl}</h1><canvas id="pv"></canvas>${xpLine()}${chips()}${gift?`<div class="rw">🎁 ${t.login}: +${gift} 🪙</div>`:''}${rw?`<div class="rw">${rwText(rw)}</div>`:''}<div class="best">🏆 ${t.best}: <b>${best}</b></div><button id="go">${t.play}</button><div class="mrow"><button id="dr" class="ghost">🌅 ${t.daily}${db?' · '+db:''}</button><button id="qb" class="ghost">📜 ${t.qt}${cl?' 🔴':''}</button></div><div class="mrow"><button id="wd" class="ghost">🎩 ${t.wd}</button><button id="st" class="ghost">⚙ ${t.set}</button><button id="lg" class="ghost">🌐 ${lang.toUpperCase()}</button></div>`;
+  ov.innerHTML=`<h1>${t.ttl}</h1><canvas id="pv"></canvas>${xpLine()}${chips()}${gift?`<div class="rw">🎁 ${t.login}: +${gift} 🪙</div>`:''}${rw?`<div class="rw">${rwText(rw)}</div>`:''}<div class="best">🏆 ${t.best}: <b>${best}</b></div>${LB_API?`<div class="sm" id="onl">${lbOnlTxt()}</div>`:''}<button id="go">${t.play}</button><div class="mrow"><button id="dr" class="ghost">🌅 ${t.daily}${db?' · '+db:''}</button><button id="qb" class="ghost">📜 ${t.qt}${cl?' 🔴':''}</button></div><div class="mrow"><button id="wd" class="ghost">🎩 ${t.wd}</button>${LB_API?`<button id="tp" class="ghost">🏆 ${t.top}</button>`:''}<button id="st" class="ghost">⚙ ${t.set}</button><button id="lg" class="ghost">🌐 ${lang.toUpperCase()}</button></div>`;
   PVc=$('pv');ov.classList.remove('hide');
   $('go').onclick=()=>{SFX.click();start()};
   $('dr').onclick=()=>{SFX.click();start(true)};
   $('qb').onclick=()=>{SFX.click();showQuests(()=>showMenu())};
+  if($('tp'))$('tp').onclick=()=>{SFX.click();showTop(()=>showMenu())};
   $('wd').onclick=()=>{SFX.click();showShop('h',()=>showMenu())};
   $('st').onclick=()=>{SFX.click();showSet(()=>showMenu())};
   $('lg').onclick=()=>{setLang();SFX.click();showMenu(rw)};
